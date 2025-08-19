@@ -1,0 +1,582 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>ATS-Optimized Resume Builder (No React)</title>
+  <!-- Bootstrap 5 CDN -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <!-- Icons (lucide via CDN SVG replacement) -->
+  <script src="https://unpkg.com/lucide@0.469.0/dist/umd/lucide.js"></script>
+  <!-- html2canvas & jsPDF for export -->
+  <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+  <style>
+    body{background:linear-gradient(#ffffff,#f6f8fb)}
+    .card-rounded{border-radius:1rem}
+    .section-label{font-size:.8rem;color:#5f6b7a;font-weight:600;text-transform:uppercase}
+    /* Resume preview styles (ATS friendly: single column, simple headings) */
+    #resumePreview{max-width:800px;margin:0 auto;color:#111}
+    #resumePreview .heading{font-size:1.35rem;font-weight:600}
+    #resumePreview .subhead{font-size:.82rem;letter-spacing:.04em;color:#495057;text-transform:uppercase;font-weight:600}
+    #resumePreview .body{font-size:.86rem;line-height:1.35rem}
+    #resumePreview ul{margin-left:1rem}
+    @media print{
+      .no-print{display:none !important}
+    }
+  </style>
+</head>
+<body>
+  <nav class="navbar bg-white border-bottom sticky-top no-print">
+    <div class="container-fluid px-3">
+      <span class="navbar-brand d-flex align-items-center gap-2">
+        <i data-lucide="stars"></i>
+        <strong>ATS Resume Builder</strong>
+        <span class="badge bg-light text-dark ms-2">No React • Bootstrap</span>
+      </span>
+      <div class="d-flex gap-2">
+        <button id="btnExportPDF" class="btn btn-outline-secondary btn-sm d-flex align-items-center gap-1"><i data-lucide="download"></i> PDF</button>
+        <button id="btnExportTXT" class="btn btn-outline-secondary btn-sm d-flex align-items-center gap-1"><i data-lucide="file-text"></i> TXT</button>
+        <button id="btnExportJSON" class="btn btn-outline-secondary btn-sm d-flex align-items-center gap-1"><i data-lucide="clipboard-list"></i> JSON</button>
+      </div>
+    </div>
+  </nav>
+
+  <div class="container py-3">
+    <div class="row g-3">
+      <!-- LEFT: Controls -->
+      <div class="col-lg-6">
+        <div class="card card-rounded shadow-sm">
+          <div class="card-body">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+              <h5 class="mb-0">Minimal Inputs</h5>
+              <button id="btnReset" class="btn btn-sm btn-outline-secondary d-flex align-items-center gap-1"><i data-lucide="refresh-ccw"></i> Reset</button>
+            </div>
+
+            <!-- Primary Fields -->
+            <div class="row g-2">
+              <div class="col-6">
+                <label class="form-label">Full Name</label>
+                <input id="name" class="form-control" />
+              </div>
+              <div class="col-6">
+                <label class="form-label">Role / Title</label>
+                <input id="title" class="form-control" />
+              </div>
+              <div class="col-6">
+                <label class="form-label">Email</label>
+                <input id="email" class="form-control" />
+              </div>
+              <div class="col-6">
+                <label class="form-label">Phone</label>
+                <input id="phone" class="form-control" />
+              </div>
+              <div class="col-12">
+                <label class="form-label">Location</label>
+                <input id="location" class="form-control" />
+              </div>
+            </div>
+
+            <!-- Links -->
+            <div class="mt-3">
+              <div class="section-label">Links</div>
+              <div id="linksWrap" class="vstack gap-2 mt-1"></div>
+              <button id="btnAddLink" class="btn btn-link btn-sm px-0">+ Add link</button>
+            </div>
+
+            <!-- Summary -->
+            <div class="mt-3">
+              <div class="section-label">Professional Summary (auto)</div>
+              <textarea id="summary" rows="3" class="form-control"></textarea>
+            </div>
+
+            <!-- Skills -->
+            <div class="mt-3">
+              <div class="section-label">Skills (comma separated — minimal ok)</div>
+              <textarea id="skills" rows="2" class="form-control"></textarea>
+              <div class="form-text">Tip: Paste keywords from the Job Description — the builder will normalize and include them.</div>
+            </div>
+
+            <!-- Experience -->
+            <div class="mt-3">
+              <div class="d-flex justify-content-between align-items-center">
+                <div class="section-label">Experience (minimal)</div>
+                <button id="btnAddExperience" class="btn btn-link btn-sm px-0">+ Add experience</button>
+              </div>
+              <div id="expWrap" class="vstack gap-2"></div>
+            </div>
+
+            <!-- Projects -->
+            <div class="mt-3">
+              <div class="d-flex justify-content-between align-items-center">
+                <div class="section-label">Projects (1-liners — auto-expands)</div>
+                <button id="btnAddProject" class="btn btn-link btn-sm px-0">+ Add project</button>
+              </div>
+              <div id="projWrap" class="vstack gap-2"></div>
+            </div>
+
+            <!-- Education -->
+            <div class="mt-3">
+              <div class="d-flex justify-content-between align-items-center">
+                <div class="section-label">Education</div>
+                <button id="btnAddEducation" class="btn btn-link btn-sm px-0">+ Add education</button>
+              </div>
+              <div id="eduWrap" class="vstack gap-2"></div>
+            </div>
+
+            <!-- JD & ATS Score -->
+            <div class="mt-3">
+              <div class="section-label">Paste Job Description (ATS score & suggestions)</div>
+              <textarea id="jd" rows="5" class="form-control" placeholder="Paste JD here"></textarea>
+              <div class="d-flex align-items-center flex-wrap gap-2 mt-2">
+                <span id="atsBadge" class="badge text-bg-warning">ATS: —</span>
+                <button id="btnAutoKeywords" class="btn btn-sm btn-outline-secondary d-flex align-items-center gap-1"><i data-lucide="sparkles"></i> Auto-add missing keywords</button>
+              </div>
+              <div class="small text-muted mt-2">
+                <div><strong>Matched:</strong> <span id="atsMatched">—</span></div>
+                <div><strong>Missing:</strong> <span id="atsMissing">—</span></div>
+              </div>
+            </div>
+
+            <!-- Tips -->
+            <div class="alert alert-light border mt-3 mb-0" role="alert">
+              <div class="fw-semibold mb-1"><i data-lucide="check-circle-2" class="me-1"></i> ATS Tips</div>
+              <ul class="mb-0 ps-3 small">
+                <li>Use one column with simple headings: Summary, Skills, Experience, Projects, Education.</li>
+                <li>Avoid tables, headers/footers, images. Keep text selectable.</li>
+                <li>Match JD keywords; aim for an ATS score ≥ 85.</li>
+                <li>Keep dates consistent (e.g., 2022 – Present). Use bullet points.</li>
+                <li>Export TXT when portals ask for paste-in text.</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- RIGHT: Preview -->
+      <div class="col-lg-6">
+        <div class="card card-rounded shadow-sm">
+          <div class="card-body">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+              <h5 class="mb-0">ATS Preview</h5>
+              <div class="small text-muted">Single column • Simple headings • Bullet points</div>
+            </div>
+            <div id="resumePreview" class="p-3 border rounded"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bootstrap JS -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+  <script>
+    // === Data Model ===
+    const ACTION_VERBS = [
+      "Led","Owned","Drove","Built","Designed","Developed","Implemented","Optimized","Automated",
+      "Streamlined","Coordinated","Launched","Architected","Delivered","Enhanced","Analyzed","Deployed",
+      "Improved","Reduced","Increased","Mentored","Collaborated","Integrated","Configured","Migrated"
+    ];
+
+    const SKILL_EXPANDER = {
+      react:["React (Hooks, Context, Router)","Component-driven architecture","State management (Redux/Zustand)","SPA/SSR (Next.js)"],
+      next:["Next.js (App Router)","Server Components","SSG/ISR","API Routes"],
+      javascript:["ES6+ syntax","Async/Await","Modules & Bundlers","Unit testing (Jest)"],
+      typescript:["Type-safe components","Generics","Type inference","Strict mode"],
+      node:["Node.js (Express)","REST APIs","Auth (JWT)","Middleware"],
+      python:["Python 3","Pandas/Numpy","APIs & scripting","Testing (pytest)"],
+      sql:["SQL Joins/CTEs","Query optimization","Indexes","Schema design"],
+      mongodb:["MongoDB (Mongoose)","Aggregation","Indexes","Schema modeling"],
+      mysql:["MySQL","Stored procedures","Normalization","Query tuning"],
+      aws:["AWS (EC2, S3)","IAM & VPC","CloudWatch","CI/CD (CodePipeline)"],
+      docker:["Dockerfiles","Images & containers","Compose","Basic Kubernetes"]
+    };
+
+    const DEFAULT_DATA = {
+      name: "Your Name",
+      title: "Full-Stack Developer",
+      email: "you@email.com",
+      phone: "+91-XXXXXXXXXX",
+      location: "Jaipur, IN",
+      links: ["linkedin.com/in/your-handle","github.com/your-handle"],
+      summary: "",
+      skills: "React, JavaScript, Node.js, MongoDB, SQL, HTML, CSS",
+      experiences: [
+        { title: "Frontend Developer", company: "ABC Tech", start: "2023", end: "Present", highlights: [] }
+      ],
+      education: [ { degree: "B.Tech in CSE", school: "Your University", year: "2019–2023" } ],
+      projects: [ { name: "E-commerce Dashboard", brief: "Admin dashboard with product analytics", tech: "JavaScript, Node.js, MongoDB" } ]
+    };
+
+    let data = JSON.parse(JSON.stringify(DEFAULT_DATA));
+
+    // === Helpers ===
+    const qs = (s, el=document) => el.querySelector(s);
+    const qsa = (s, el=document) => Array.from(el.querySelectorAll(s));
+    const uniq = (arr) => Array.from(new Set(arr));
+
+    const toKeywords = (text) => (text||"")
+      .toLowerCase().replace(/[^a-z0-9+.# ]/g, " ")
+      .split(/\s+/).filter(w => w.length>2);
+
+    const genAction = () => ACTION_VERBS[Math.floor(Math.random()*ACTION_VERBS.length)];
+
+    const expandSkill = (skill) => {
+      const key = skill.trim().toLowerCase();
+      const k = Object.keys(SKILL_EXPANDER).find(x => key.includes(x));
+      return k ? SKILL_EXPANDER[k] : [skill.trim()];
+    };
+
+    const generateSummary = (name, title, skillsCsv) => {
+      const skills = uniq(skillsCsv.split(",").map(s=>s.trim()).filter(Boolean));
+      return `${title} with hands-on experience across ${skills.slice(0,4).join(", ")}${skills.length>4?", etc.":""}. Focused on building reliable, accessible, and performant products. Strong owner with bias for delivery and clean code.`;
+    };
+
+    const expandProject = (p) => {
+      const tech = (p.tech||"").split(",").map(x=>x.trim()).filter(Boolean).slice(0,4);
+      return [
+        `${genAction()} ${p.name.toLowerCase().includes("app")?"an":"a"} ${p.brief.toLowerCase()}.`,
+        tech.length?`Implemented core features using ${tech.join(", ")}.`:`Implemented core features with modern web tooling.`,
+        `Focused on performance, accessibility (WCAG), and responsive UI.`,
+        `Added telemetry, error handling, and docs to improve maintainability.`
+      ];
+    };
+
+    const expandExperience = (e, skillsCsv) => {
+      const skills = uniq(skillsCsv.split(",").map(s=>s.trim()).filter(Boolean));
+      const bullets = [];
+      bullets.push(`${genAction()} features end-to-end — requirements, design, implementation, testing, and release.`);
+      if (skills.length) bullets.push(`Worked with ${skills.slice(0,4).join(", ")}${skills.length>4?", etc.":""}.`);
+      bullets.push(`Improved performance and reduced defects via code reviews, testing, and automation.`);
+      bullets.push(`Collaborated cross-functionally with design, QA, and backend to ship on schedule.`);
+      return bullets;
+    };
+
+    const asPlainText = (d) => {
+      const lines = [];
+      lines.push(d.name.toUpperCase());
+      lines.push(d.title);
+      lines.push(`${d.location} | ${d.phone} | ${d.email}`);
+      if (d.links.length) lines.push(d.links.join(" | "));
+      lines.push("");
+      lines.push("SUMMARY");
+      lines.push(d.summary);
+      lines.push("");
+      lines.push("SKILLS");
+      lines.push(d.skills);
+      lines.push("");
+      lines.push("EXPERIENCE");
+      d.experiences.forEach(e=>{
+        lines.push(`${e.title} — ${e.company} (${e.start} – ${e.end})`);
+        (e.highlights||[]).forEach(h=>lines.push(`• ${h}`));
+        lines.push("");
+      });
+      lines.push("EDUCATION");
+      d.education.forEach(ed=>lines.push(`${ed.degree}, ${ed.school}, ${ed.year}`));
+      lines.push("");
+      if (d.projects.length){
+        lines.push("PROJECTS");
+        d.projects.forEach(p=>{
+          lines.push(`${p.name} — ${p.brief}${p.tech?` [${p.tech}]`:""}`);
+          expandProject(p).forEach(b=>lines.push(`• ${b}`));
+          lines.push("");
+        });
+      }
+      return lines.join("\n");
+    };
+
+    const scoreATS = (resume, jd) => {
+      const resumeText = asPlainText(resume).toLowerCase();
+      const rWords = new Set(toKeywords(resumeText));
+      const jdWords = uniq(toKeywords(jd)).filter(w=>w.length>3);
+      const important = new Set(["react","next","javascript","typescript","node","python","java","sql","mongodb","mysql","docker","aws","kotlin","swift","devops","testing","automation","jira","git","ci","cd","ml","ai","opencv","rag","langchain"]);
+      let matched = [], missing = [];
+      jdWords.forEach(w=> rWords.has(w) ? matched.push(w) : missing.push(w));
+      const total = jdWords.length + jdWords.filter(w=>important.has(w)).length;
+      const got = matched.length + matched.filter(w=>important.has(w)).length;
+      const score = total ? Math.round((got/total)*100) : 100;
+      return { score: Math.min(score,99), matched: matched.slice(0,50), missing: missing.slice(0,20) };
+    };
+
+    // === UI builders ===
+    function renderLinkRow(value, idx){
+      const row = document.createElement('div');
+      row.className = 'input-group';
+      row.innerHTML = `
+        <input class="form-control" value="${value||''}" />
+        <button class="btn btn-outline-danger" type="button">Remove</button>
+      `;
+      const input = row.querySelector('input');
+      input.addEventListener('input', e=>{ data.links[idx] = e.target.value; update(); });
+      row.querySelector('button').addEventListener('click', ()=>{ data.links.splice(idx,1); update(); });
+      return row;
+    }
+
+    function renderExperienceRow(e, i){
+      const wrap = document.createElement('div');
+      wrap.className = 'border rounded p-2';
+      wrap.innerHTML = `
+        <div class="row g-2">
+          <div class="col-6"><label class="form-label">Title</label><input class="form-control" value="${e.title}"></div>
+          <div class="col-6"><label class="form-label">Company</label><input class="form-control" value="${e.company}"></div>
+          <div class="col-6"><label class="form-label">Start</label><input class="form-control" value="${e.start}"></div>
+          <div class="col-6"><label class="form-label">End</label><input class="form-control" value="${e.end}"></div>
+          <div class="col-12"><label class="form-label">Highlights (one per line — leave blank to auto)</label><textarea class="form-control" rows="3">${(e.highlights||[]).join('\n')}</textarea></div>
+          <div class="col-12 text-end"><button class="btn btn-sm btn-outline-danger">Remove</button></div>
+        </div>
+      `;
+      const [title, company, start, end] = qsa('input', wrap);
+      const highlights = qs('textarea', wrap);
+      title.addEventListener('input', ev=>{ data.experiences[i].title = ev.target.value; update(); });
+      company.addEventListener('input', ev=>{ data.experiences[i].company = ev.target.value; update(); });
+      start.addEventListener('input', ev=>{ data.experiences[i].start = ev.target.value; update(); });
+      end.addEventListener('input', ev=>{ data.experiences[i].end = ev.target.value; update(); });
+      highlights.addEventListener('input', ev=>{ data.experiences[i].highlights = ev.target.value.split('\n'); update(); });
+      wrap.querySelector('button.btn-outline-danger').addEventListener('click', ()=>{ data.experiences.splice(i,1); update(); });
+      return wrap;
+    }
+
+    function renderProjectRow(p, i){
+      const wrap = document.createElement('div');
+      wrap.className = 'border rounded p-2';
+      wrap.innerHTML = `
+        <div class="row g-2">
+          <div class="col-6"><label class="form-label">Name</label><input class="form-control" value="${p.name}"></div>
+          <div class="col-6"><label class="form-label">Tech (csv)</label><input class="form-control" value="${p.tech||''}"></div>
+          <div class="col-12"><label class="form-label">Brief (1 line)</label><textarea class="form-control" rows="2">${p.brief}</textarea></div>
+          <div class="col-12 text-end"><button class="btn btn-sm btn-outline-danger">Remove</button></div>
+        </div>
+      `;
+      const [name, tech] = qsa('input', wrap);
+      const brief = qs('textarea', wrap);
+      name.addEventListener('input', ev=>{ data.projects[i].name = ev.target.value; update(); });
+      tech.addEventListener('input', ev=>{ data.projects[i].tech = ev.target.value; update(); });
+      brief.addEventListener('input', ev=>{ data.projects[i].brief = ev.target.value; update(); });
+      wrap.querySelector('button.btn-outline-danger').addEventListener('click', ()=>{ data.projects.splice(i,1); update(); });
+      return wrap;
+    }
+
+    function renderEducationRow(ed, i){
+      const wrap = document.createElement('div');
+      wrap.className = 'border rounded p-2';
+      wrap.innerHTML = `
+        <div class="row g-2">
+          <div class="col-4"><label class="form-label">Degree</label><input class="form-control" value="${ed.degree}"></div>
+          <div class="col-5"><label class="form-label">School</label><input class="form-control" value="${ed.school}"></div>
+          <div class="col-3"><label class="form-label">Year</label><input class="form-control" value="${ed.year}"></div>
+          <div class="col-12 text-end"><button class="btn btn-sm btn-outline-danger">Remove</button></div>
+        </div>
+      `;
+      const [degree, school, year] = qsa('input', wrap);
+      degree.addEventListener('input', ev=>{ data.education[i].degree = ev.target.value; update(); });
+      school.addEventListener('input', ev=>{ data.education[i].school = ev.target.value; update(); });
+      year.addEventListener('input', ev=>{ data.education[i].year = ev.target.value; update(); });
+      wrap.querySelector('button.btn-outline-danger').addEventListener('click', ()=>{ data.education.splice(i,1); update(); });
+      return wrap;
+    }
+
+    // === Rendering ===
+    function renderControls(){
+      // Primary fields
+      qs('#name').value = data.name;
+      qs('#title').value = data.title;
+      qs('#email').value = data.email;
+      qs('#phone').value = data.phone;
+      qs('#location').value = data.location;
+      qs('#summary').value = data.summary;
+      qs('#skills').value = data.skills;
+
+      // Links
+      const linksWrap = qs('#linksWrap');
+      linksWrap.innerHTML = '';
+      data.links.forEach((l, idx)=> linksWrap.appendChild(renderLinkRow(l, idx)) );
+
+      // Experience
+      const expWrap = qs('#expWrap');
+      expWrap.innerHTML = '';
+      data.experiences.forEach((e,i)=> expWrap.appendChild(renderExperienceRow(e,i)) );
+
+      // Projects
+      const projWrap = qs('#projWrap');
+      projWrap.innerHTML = '';
+      data.projects.forEach((p,i)=> projWrap.appendChild(renderProjectRow(p,i)) );
+
+      // Education
+      const eduWrap = qs('#eduWrap');
+      eduWrap.innerHTML = '';
+      data.education.forEach((ed,i)=> eduWrap.appendChild(renderEducationRow(ed,i)) );
+    }
+
+    function expandedSkills(){
+      const base = data.skills.split(',').map(s=>s.trim()).filter(Boolean);
+      return uniq(base.flatMap(expandSkill));
+    }
+
+    function renderPreview(){
+      const root = qs('#resumePreview');
+      root.innerHTML = '';
+      // Header
+      const header = document.createElement('div');
+      header.className = 'text-center mb-2';
+      header.innerHTML = `
+        <div class="heading">${data.name}</div>
+        <div class="body">${data.title}</div>
+        <div class="small mt-1">${data.location} | ${data.phone} | ${data.email}</div>
+        ${data.links?.length ? `<div class="small mt-1">${data.links.filter(Boolean).join(' | ')}</div>` : ''}
+      `;
+      root.appendChild(header);
+
+      // Section builder
+      const section = (title, contentEl) => {
+        const sec = document.createElement('div');
+        sec.className = 'mt-3';
+        sec.innerHTML = `<div class="subhead">${title}</div>`;
+        sec.appendChild(contentEl);
+        root.appendChild(sec);
+      };
+
+      // Summary
+      const s = document.createElement('div'); s.className='body'; s.textContent = data.summary; section('Summary', s);
+
+      // Skills
+      const sk = document.createElement('div'); sk.className='body'; sk.textContent = expandedSkills().join(' • '); section('Skills', sk);
+
+      // Experience
+      const ex = document.createElement('div');
+      data.experiences.forEach((e)=>{
+        const block = document.createElement('div');
+        block.className = 'mb-2';
+        const top = document.createElement('div');
+        top.className = 'd-flex justify-content-between body fw-semibold';
+        top.innerHTML = `<span>${e.title} — ${e.company}</span><span class="text-muted">${e.start} – ${e.end}</span>`;
+        const ul = document.createElement('ul'); ul.className = 'body';
+        const items = (e.highlights && e.highlights.filter(x=>x.trim()).length ? e.highlights : expandExperience(e, data.skills));
+        items.forEach(h=>{ const li=document.createElement('li'); li.textContent=h; ul.appendChild(li); });
+        block.appendChild(top); block.appendChild(ul); ex.appendChild(block);
+      });
+      section('Experience', ex);
+
+      // Projects
+      if (data.projects?.length){
+        const pr = document.createElement('div');
+        data.projects.forEach((p)=>{
+          const block = document.createElement('div'); block.className='mb-2';
+          const title = document.createElement('div'); title.className='body fw-semibold';
+          title.innerHTML = `${p.name} ${p.tech?`<span class="fw-normal">— [${p.tech}]</span>`:''}`;
+          const ul = document.createElement('ul'); ul.className='body';
+          expandProject(p).forEach(b=>{ const li=document.createElement('li'); li.textContent=b; ul.appendChild(li); });
+          block.appendChild(title); block.appendChild(ul); pr.appendChild(block);
+        });
+        section('Projects', pr);
+      }
+
+      // Education
+      const ed = document.createElement('div');
+      data.education.forEach((e)=>{
+        const row = document.createElement('div'); row.className='body';
+        row.innerHTML = `<span class="fw-semibold">${e.degree}</span>, ${e.school} — ${e.year}`;
+        ed.appendChild(row);
+      });
+      section('Education', ed);
+    }
+
+    function updateATS(){
+      const jd = qs('#jd').value || '';
+      if(!jd.trim()){
+        qs('#atsBadge').className = 'badge text-bg-secondary';
+        qs('#atsBadge').textContent = 'ATS: —';
+        qs('#atsMatched').textContent = '—';
+        qs('#atsMissing').textContent = '—';
+        return;
+      }
+      const res = scoreATS(data, jd);
+      const badge = qs('#atsBadge');
+      badge.textContent = `ATS: ${res.score}/100`;
+      badge.className = `badge ${res.score>=85 ? 'text-bg-success' : 'text-bg-warning'}`;
+      qs('#atsMatched').textContent = res.matched.slice(0,20).join(', ') || '—';
+      qs('#atsMissing').textContent = res.missing.slice(0,20).join(', ') || '—';
+    }
+
+    function autoGenerateIfEmpty(){
+      if(!data.summary || data.summary.trim().length < 40){
+        data.summary = generateSummary(data.name, data.title, data.skills);
+      }
+      data.experiences = data.experiences.map(e=>({
+        ...e,
+        highlights: (e.highlights && e.highlights.filter(x=>x.trim()).length) ? e.highlights : expandExperience(e, data.skills)
+      }));
+    }
+
+    function update(){
+      autoGenerateIfEmpty();
+      renderControls();
+      renderPreview();
+      updateATS();
+      lucide.createIcons();
+    }
+
+    // === Events ===
+    function wirePrimaryInputs(){
+      qs('#name').addEventListener('input', e=>{ data.name=e.target.value; update(); });
+      qs('#title').addEventListener('input', e=>{ data.title=e.target.value; update(); });
+      qs('#email').addEventListener('input', e=>{ data.email=e.target.value; update(); });
+      qs('#phone').addEventListener('input', e=>{ data.phone=e.target.value; update(); });
+      qs('#location').addEventListener('input', e=>{ data.location=e.target.value; update(); });
+      qs('#summary').addEventListener('input', e=>{ data.summary=e.target.value; update(); });
+      qs('#skills').addEventListener('input', e=>{ data.skills=e.target.value; update(); });
+      qs('#jd').addEventListener('input', updateATS);
+
+      qs('#btnAddLink').addEventListener('click', ()=>{ data.links.push(''); update(); });
+      qs('#btnAddExperience').addEventListener('click', ()=>{ data.experiences.push({title:'Role', company:'Company', start:'2022', end:'2023', highlights:[]}); update(); });
+      qs('#btnAddProject').addEventListener('click', ()=>{ data.projects.push({name:'Project Name', brief:'One-liner', tech:''}); update(); });
+      qs('#btnAddEducation').addEventListener('click', ()=>{ data.education.push({degree:'Degree', school:'Institute', year:'YYYY'}); update(); });
+
+      qs('#btnAutoKeywords').addEventListener('click', ()=>{
+        const jd = qs('#jd').value || '';
+        if(!jd.trim()) return;
+        const { missing } = scoreATS(data, jd);
+        const top = uniq(missing).slice(0,8);
+        data.skills = data.skills ? data.skills + ', ' + top.join(', ') : top.join(', ');
+        update();
+      });
+
+      qs('#btnReset').addEventListener('click', ()=>{ data = JSON.parse(JSON.stringify(DEFAULT_DATA)); update(); });
+
+      qs('#btnExportTXT').addEventListener('click', ()=>{
+        const text = asPlainText(data);
+        const blob = new Blob([text], {type:'text/plain;charset=utf-8'});
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a'); a.href=url; a.download='resume.txt'; a.click(); URL.revokeObjectURL(url);
+      });
+
+      qs('#btnExportJSON').addEventListener('click', ()=>{
+        const blob = new Blob([JSON.stringify(data,null,2)], {type:'application/json'});
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a'); a.href=url; a.download='resume.json'; a.click(); URL.revokeObjectURL(url);
+      });
+
+      qs('#btnExportPDF').addEventListener('click', async ()=>{
+        const el = qs('#resumePreview');
+        const canvas = await html2canvas(el, { scale: 2, useCORS: true, backgroundColor: '#ffffff' });
+        const imgData = canvas.toDataURL('image/png');
+        const { jsPDF } = window.jspdf;
+        const pdf = new jsPDF({ unit: 'pt', format: 'a4' });
+        const pageWidth = pdf.internal.pageSize.getWidth();
+        const pageHeight = pdf.internal.pageSize.getHeight();
+        const ratio = Math.min(pageWidth / canvas.width, (pageHeight-40) / canvas.height);
+        const x = (pageWidth - canvas.width * ratio) / 2;
+        const y = 20;
+        pdf.addImage(imgData, 'PNG', x, y, canvas.width * ratio, canvas.height * ratio);
+        pdf.save('resume.pdf');
+      });
+    }
+
+    // === Init ===
+    document.addEventListener('DOMContentLoaded', ()=>{
+      wirePrimaryInputs();
+      update();
+    });
+  </script>
+</body>
+</html>
