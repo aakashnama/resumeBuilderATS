@@ -1,131 +1,531 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>ATS Resume Builder</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <!-- Bootstrap -->
+  <meta charset="utf-8" />
+  <title>ATS-Optimized Resume Builder — Single File</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <!-- Bootstrap CSS -->
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
   <style>
-    body { background:#f5f5f5; }
-    .resume-preview { background:#fff; padding:20px; border-radius:10px; box-shadow:0 0 10px rgba(0,0,0,.1); }
-    .section-title { font-weight:bold; margin-top:15px; }
-    #atsScore { font-weight:bold; }
+    :root{--card-radius:12px}
+    body{background:linear-gradient(180deg,#ffffff,#f3f6fb);font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial}
+    .card-rounded{border-radius:var(--card-radius)}
+    .subhead{font-size:.85rem;font-weight:600;color:#374151;letter-spacing:.02em;text-transform:uppercase}
+    #preview{max-width:900px;margin:0 auto;color:#111;background:#fff;padding:20px;border-radius:10px}
+    #preview .heading{font-size:20px;font-weight:700}
+    #preview .meta{font-size:13px;color:#374151;margin-top:4px}
+    #preview .section-title{font-weight:700;margin-top:14px;margin-bottom:6px}
+    #preview ul{margin-left:1rem}
+    .tiny{font-size:12px;color:#6b7280}
+    .keyword-chip{display:inline-block;background:#eef2ff;color:#3730a3;padding:4px 8px;border-radius:999px;margin:2px;font-size:12px}
+    @media print{.no-print{display:none!important}}
   </style>
 </head>
-<body class="container py-4">
-  <h2 class="mb-3">ATS Optimized Resume Builder</h2>
+<body>
+  <nav class="navbar bg-white border-bottom mb-3 no-print">
+    <div class="container-fluid">
+      <span class="navbar-brand d-flex align-items-center gap-2">
+        <svg width="20" height="20" viewBox="0 0 24 24"><path fill="#0ea5a4" d="M12 2l2.9 6.18L21 9.27l-5 4.87L17.8 21 12 17.77 6.2 21 7 14.14 2 9.27l6.1-1.09L12 2z"/></svg>
+        <strong>ATS Resume Builder</strong>
+      </span>
+      <div class="d-flex gap-2">
+        <button id="exportPDF" class="btn btn-outline-primary btn-sm">PDF</button>
+        <button id="exportDOC" class="btn btn-outline-secondary btn-sm">DOC</button>
+        <button id="exportTXT" class="btn btn-outline-secondary btn-sm">TXT</button>
+        <button id="exportJSON" class="btn btn-outline-secondary btn-sm">JSON</button>
+      </div>
+    </div>
+  </nav>
 
-  <!-- Form -->
-  <form id="resumeForm" class="row g-3">
-    <div class="col-md-6"><input type="text" class="form-control" id="name" placeholder="Full Name" required></div>
-    <div class="col-md-6"><input type="text" class="form-control" id="title" placeholder="Professional Title" required></div>
-    <div class="col-md-6"><input type="email" class="form-control" id="email" placeholder="Email" required></div>
-    <div class="col-md-6"><input type="text" class="form-control" id="phone" placeholder="Phone" required></div>
-    <div class="col-12"><input type="text" class="form-control" id="location" placeholder="Location"></div>
-    <div class="col-12"><input type="text" class="form-control" id="skills" placeholder="Skills (comma separated)"></div>
-    <div class="col-12"><textarea class="form-control" id="projects" placeholder="Projects (one per line)" rows="3"></textarea></div>
-    <div class="col-12"><textarea class="form-control" id="jobdesc" placeholder="Paste Job Description here (for ATS score)" rows="3"></textarea></div>
-    <div class="col-12"><button type="button" class="btn btn-primary" onclick="generateResume()">Generate Resume</button></div>
-  </form>
+  <main class="container mb-5">
+    <div class="row g-3">
+      <!-- Controls -->
+      <div class="col-lg-5">
+        <div class="card card-rounded shadow-sm p-3">
+          <div class="d-flex justify-content-between align-items-center mb-2">
+            <h5 class="mb-0">Create Resume</h5>
+            <button id="resetBtn" class="btn btn-sm btn-outline-danger">Reset</button>
+          </div>
 
-  <hr>
+          <div class="row g-2">
+            <div class="col-6">
+              <label class="form-label tiny">Full name</label>
+              <input id="name" class="form-control" placeholder="Your name" />
+            </div>
+            <div class="col-6">
+              <label class="form-label tiny">Title (Role)</label>
+              <input id="role" class="form-control" placeholder="e.g. Frontend Developer" />
+            </div>
+            <div class="col-6">
+              <label class="form-label tiny">Email</label>
+              <input id="email" class="form-control" placeholder="you@mail.com" />
+            </div>
+            <div class="col-6">
+              <label class="form-label tiny">Phone</label>
+              <input id="phone" class="form-control" placeholder="+91-XXXXXXXX" />
+            </div>
+            <div class="col-12">
+              <label class="form-label tiny">Location</label>
+              <input id="location" class="form-control" placeholder="City, Country" />
+            </div>
 
-  <!-- ATS Score -->
-  <p>ATS Score: <span id="atsScore">0</span>%</p>
-  <button class="btn btn-success btn-sm" onclick="exportPDF()">Export PDF</button>
-  <button class="btn btn-secondary btn-sm" onclick="exportTXT()">Export TXT</button>
-  <button class="btn btn-info btn-sm" onclick="exportJSON()">Export JSON</button>
-  <button class="btn btn-warning btn-sm" onclick="exportDOCX()">Export DOCX</button>
+            <div class="col-12">
+              <label class="form-label tiny">Minimal skills (comma separated)</label>
+              <textarea id="skills" rows="2" class="form-control" placeholder="React, Node.js, SQL"></textarea>
+              <div class="tiny mt-1">You can paste keywords from the JD; builder will normalize and expand.</div>
+            </div>
 
-  <!-- Preview -->
-  <div id="resumePreview" class="resume-preview mt-4"></div>
+            <div class="col-12">
+              <label class="form-label tiny">One-line projects (one per line)</label>
+              <textarea id="projects" rows="3" class="form-control" placeholder="E-commerce dashboard — React, Node.js"></textarea>
+              <div class="tiny mt-1">Short project hints will be auto-expanded into bullets.</div>
+            </div>
 
-  <!-- Libraries -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+            <div class="col-12">
+              <label class="form-label tiny">Job Description (paste full JD)</label>
+              <textarea id="jd" rows="6" class="form-control" placeholder="Paste the job posting here..."></textarea>
+              <div class="d-flex gap-2 mt-2">
+                <span id="atsBadge" class="badge bg-warning text-dark">ATS: —</span>
+                <button id="autoAddKeywords" class="btn btn-sm btn-outline-secondary">Auto-add missing keywords</button>
+                <div class="tiny text-muted ms-auto">Target ATS ≥ 85</div>
+              </div>
+            </div>
+
+            <div class="col-12 d-flex gap-2 mt-2">
+              <button id="genFromJD" class="btn btn-primary">Auto-generate CV from JD</button>
+              <button id="generateBtn" class="btn btn-outline-primary">Generate Preview</button>
+            </div>
+
+            <div class="col-12 mt-2">
+              <div class="alert alert-light tiny mb-0">
+                <strong>Tips:</strong> Keep structure simple (Summary, Skills, Experience, Projects, Education). Avoid images/tables for ATS. Use keywords from JD.
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Preview -->
+      <div class="col-lg-7">
+        <div class="card card-rounded shadow-sm p-3">
+          <div class="d-flex justify-content-between align-items-start mb-2">
+            <h5 class="mb-0">Editable Resume Preview</h5>
+            <div class="tiny text-muted">Click any text in preview to edit inline; changes are kept in-memory.</div>
+          </div>
+
+          <div id="preview" contenteditable="false">
+            <!-- Live preview injected here -->
+          </div>
+
+          <div class="mt-3">
+            <div class="subhead">Matched / Missing Keywords</div>
+            <div class="mt-2 tiny">
+              <div><strong>Matched:</strong> <span id="matchedList">—</span></div>
+              <div><strong>Missing:</strong> <span id="missingList">—</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </main>
+
+  <!-- Libraries (loaded before script) -->
+  <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
 
   <script>
-    // Expand Skills into detailed lines
-    function expandSkills(skills) {
-      return skills.split(',').map(s => s.trim()).filter(s => s)
-        .map(s => `<li>${s} — Proficient with hands-on experience.</li>`).join("");
-    }
-    // Expand Projects
-    function expandProjects(projects) {
-      return projects.split("\n").map(p => p.trim()).filter(p => p)
-        .map(p => `<li><b>${p}</b>: Built with best practices, delivering measurable results.</li>`).join("");
-    }
-    // ATS Score Calculation
-    function calculateATS(jobdesc, skills) {
-      if(!jobdesc || !skills) return 0;
-      let jdWords = jobdesc.toLowerCase().split(/\W+/);
-      let skillsArr = skills.split(',').map(s=>s.trim().toLowerCase());
-      let matchCount = skillsArr.filter(s => jdWords.includes(s)).length;
-      return Math.round((matchCount / skillsArr.length) * 100) || 0;
-    }
-    // Generate Resume
-    function generateResume() {
-      let name = document.getElementById("name").value;
-      let title = document.getElementById("title").value;
-      let email = document.getElementById("email").value;
-      let phone = document.getElementById("phone").value;
-      let location = document.getElementById("location").value;
-      let skills = document.getElementById("skills").value;
-      let projects = document.getElementById("projects").value;
-      let jobdesc = document.getElementById("jobdesc").value;
+  /*******************************
+   * ATS Resume Builder — Single File
+   * - Auto-generate from JD
+   * - Expand skills/projects
+   * - ATS estimator & suggestions
+   * - Inline editing of preview
+   * - PDF / DOC fallback / TXT / JSON exports
+   *******************************/
 
-      document.getElementById("atsScore").innerText = calculateATS(jobdesc, skills);
+  // ---------- Helpers & Data ----------
+  const ACTION_VERBS = ["Led","Owned","Built","Designed","Developed","Implemented","Optimized","Automated","Streamlined","Launched","Architected","Delivered","Enhanced","Analyzed","Deployed","Improved","Reduced","Increased","Mentored","Collaborated","Integrated"];
+  const SKILL_EXPANDER = {
+    react: ["React (Hooks, Context)", "Component-driven UI", "SPA patterns"],
+    node: ["Node.js (Express)", "REST APIs", "Middleware"],
+    javascript: ["ES6+", "Async/Await", "Modular JS"],
+    typescript: ["Type-safe code", "Generics", "Strict mode"],
+    sql: ["SQL Joins/CTEs", "Query tuning"],
+    mongodb: ["MongoDB (Mongoose)", "Aggregation"],
+    aws: ["AWS (S3, EC2)", "IAM", "CI/CD basics"],
+    docker: ["Docker, containerization"]
+  };
 
-      let preview = `
-        <h3>${name}</h3>
-        <p><i>${title}</i></p>
-        <p>${email} | ${phone} | ${location}</p>
-        <div class="section-title">Skills</div>
-        <ul>${expandSkills(skills)}</ul>
-        <div class="section-title">Projects</div>
-        <ul>${expandProjects(projects)}</ul>
-      `;
-      document.getElementById("resumePreview").innerHTML = preview;
+  const DEFAULT = {
+    name: "Your Name",
+    role: "Full-Stack Developer",
+    email: "you@example.com",
+    phone: "+91-XXXXXXXXXX",
+    location: "City, Country",
+    skills: "React, JavaScript, Node.js, SQL",
+    projects: "E-commerce Dashboard — React, Node.js",
+    experiences: [{ title: "Frontend Developer", company: "ABC Tech", start: "2023", end: "Present", highlights: [] }],
+    education: [{ degree: "B.Tech (CSE)", school: "University", year: "2023" }]
+  };
+
+  let state = JSON.parse(JSON.stringify(DEFAULT));
+
+  // DOM aliases
+  const $ = id => document.getElementById(id);
+  const previewEl = $('preview');
+  const atsBadge = $('atsBadge');
+  const matchedListEl = $('matchedList');
+  const missingListEl = $('missingList');
+
+  // ---------- Text utilities ----------
+  function toKeywords(text){
+    return (text||"").toLowerCase().replace(/[^a-z0-9+.# ]/g," ").split(/\s+/).filter(w => w.length>2);
+  }
+  function uniq(arr){ return Array.from(new Set(arr)); }
+  function pickAction(){ return ACTION_VERBS[Math.floor(Math.random()*ACTION_VERBS.length)]; }
+
+  // Expand skill into descriptive lines
+  function expandSkillText(skill){
+    const key = skill.trim().toLowerCase();
+    const found = Object.keys(SKILL_EXPANDER).find(k=> key.includes(k));
+    if(found) return SKILL_EXPANDER[found];
+    return [skill.trim()];
+  }
+
+  // Expand project into bullets
+  function expandProject(p){
+    // p like "E-commerce Dashboard — React, Node.js"
+    const tech = (p.tech || "").split(",").map(s=>s.trim()).filter(Boolean);
+    const bullets = [];
+    bullets.push(`${pickAction()} ${p.name} — ${p.brief}.`);
+    if(tech.length) bullets.push(`Implemented core features using ${tech.join(", ")}.`);
+    bullets.push("Focused on performance, accessibility, and responsive UI.");
+    bullets.push("Added monitoring, error handling, and documentation to improve maintainability.");
+    return bullets;
+  }
+
+  // Expand experience if empty
+  function expandExperience(e, skillsCsv){
+    const skills = uniq((skillsCsv||"").split(",").map(s=>s.trim()).filter(Boolean));
+    const bullets = [];
+    bullets.push(`${pickAction()} features end-to-end — requirements, design, implementation, testing, and release.`);
+    if(skills.length) bullets.push(`Worked with ${skills.slice(0,4).join(", ")}${skills.length>4 ? ", etc." : ""}.`);
+    bullets.push("Improved performance and reduced defects via testing and automation.");
+    bullets.push("Collaborated across design, QA, and backend to ship on schedule.");
+    return bullets;
+  }
+
+  // Generate a concise summary
+  function genSummary(name, role, skillsCsv){
+    const skills = uniq((skillsCsv||"").split(",").map(s=>s.trim()).filter(Boolean));
+    return `${role} with hands-on experience across ${skills.slice(0,6).join(", ")}${skills.length>6? ", etc." : ""}. Strong ownership and bias for delivery.`;
+  }
+
+  // ---------- ATS Scoring ----------
+  const IMPORTANT = new Set(["react","next","javascript","typescript","node","python","java","sql","mongodb","mysql","docker","aws","devops","testing","automation","git","ci","cd","ml","ai","opencv","langchain","rag"]);
+
+  function scoreATS(resumeText, jd){
+    const rWords = new Set(toKeywords(resumeText));
+    const jdWords = uniq(toKeywords(jd)).filter(w=>w.length>3);
+    const matched=[], missing=[];
+    jdWords.forEach(w => rWords.has(w) ? matched.push(w) : missing.push(w));
+    const total = jdWords.length + jdWords.filter(w=>IMPORTANT.has(w)).length;
+    const got = matched.length + matched.filter(w=>IMPORTANT.has(w)).length;
+    const score = total ? Math.round((got/total)*100) : 100;
+    return { score: Math.min(score,99), matched: uniq(matched).slice(0,50), missing: uniq(missing).slice(0,50) };
+  }
+
+  // ---------- Generate Resume HTML ----------
+  function buildResumeHtml(data){
+    // header
+    const lines = [];
+    lines.push(`<div class="heading">${escapeHtml(data.name)}</div>`);
+    lines.push(`<div class="meta">${escapeHtml(data.role)}</div>`);
+    lines.push(`<div class="meta">${escapeHtml(data.location)} | ${escapeHtml(data.phone)} | ${escapeHtml(data.email)}</div>`);
+
+    // summary
+    lines.push(`<div class="section-title">Summary</div>`);
+    lines.push(`<div>${escapeHtml(data.summary||genSummary(data.name, data.role, data.skills))}</div>`);
+
+    // skills (expanded)
+    const skillList = uniq((data.skills||"").split(",").map(s=>s.trim()).filter(Boolean));
+    const expanded = skillList.flatMap(s=>expandSkillText(s));
+    lines.push(`<div class="section-title">Skills</div>`);
+    lines.push(`<div>${expanded.map(s=>escapeHtml(s)).join(" • ")}</div>`);
+
+    // experience
+    lines.push(`<div class="section-title">Experience</div>`);
+    (data.experiences||[]).forEach((exp)=>{
+      const h = exp.highlights && exp.highlights.filter(x=>x.trim()).length ? exp.highlights : expandExperience(exp, data.skills);
+      lines.push(`<div><strong>${escapeHtml(exp.title)} — ${escapeHtml(exp.company)}</strong> <span class="tiny text-muted">${escapeHtml(exp.start)} – ${escapeHtml(exp.end)}</span></div>`);
+      lines.push(`<ul>${h.map(x=>`<li>${escapeHtml(x)}</li>`).join("")}</ul>`);
+    });
+
+    // projects
+    if((data.projects||[]).length){
+      lines.push(`<div class="section-title">Projects</div>`);
+      data.projects.forEach(p=>{
+        const bullets = expandProject(p);
+        lines.push(`<div><strong>${escapeHtml(p.name)}</strong> ${p.tech?`<span class="tiny text-muted">— [${escapeHtml(p.tech)}]</span>`: ""}</div>`);
+        lines.push(`<ul>${bullets.map(b=>`<li>${escapeHtml(b)}</li>`).join("")}</ul>`);
+      });
     }
 
-    // Export PDF
-    async function exportPDF() {
+    // education
+    lines.push(`<div class="section-title">Education</div>`);
+    (data.education||[]).forEach(ed => {
+      lines.push(`<div>${escapeHtml(ed.degree)} , ${escapeHtml(ed.school)} — ${escapeHtml(ed.year)}</div>`);
+    });
+
+    return lines.join("");
+  }
+
+  // Simple escape to avoid injection in contentEditable
+  function escapeHtml(str){
+    if(!str && str!==0) return "";
+    return String(str).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+  }
+
+  // ---------- UI wiring ----------
+  function readFormToState(){
+    state.name = $('name').value || DEFAULT.name;
+    state.role = $('role').value || DEFAULT.role;
+    state.email = $('email').value || DEFAULT.email;
+    state.phone = $('phone').value || DEFAULT.phone;
+    state.location = $('location').value || DEFAULT.location;
+    state.skills = $('skills').value || DEFAULT.skills;
+    // projects: parse lines into objects {name, brief, tech}
+    const projRaw = ($('projects').value||"").split('\n').map(l=>l.trim()).filter(Boolean);
+    state.projects = projRaw.map(line=>{
+      // accept format "Name — brief" or "Name — brief — tech" or "Name | tech"
+      let [nameAndBrief, techPart] = line.split('—').map(s=>s.trim());
+      if(!techPart) {
+        // try split by pipe
+        const parts = line.split('|').map(s=>s.trim());
+        if(parts.length>1){ nameAndBrief = parts[0]; techPart = parts.slice(1).join(', '); }
+      }
+      // If nameAndBrief still contains " - " try pluck first phrase as name
+      let name = nameAndBrief;
+      let brief = (nameAndBrief || "");
+      return { name: name, brief: brief, tech: techPart || "" };
+    });
+
+    // experiences and education are left as defaults unless user expands later (we keep defaults so preview is non-empty)
+    state.experiences = state.experiences && state.experiences.length ? state.experiences : DEFAULT.experiences;
+    state.education = state.education && state.education.length ? state.education : DEFAULT.education;
+    // summary may be empty; builder can auto-generate
+    state.summary = state.summary || "";
+  }
+
+  function renderPreview(){
+    const html = buildResumeHtml(state);
+    previewEl.innerHTML = html;
+    // make preview editable — allow inline edits
+    previewEl.contentEditable = "true";
+    // attach listeners to update state from edits on blur
+    // We won't parse complicated edits back to structured data; we will read plain text for export if needed.
+    // Update ATS
+    updateATS();
+  }
+
+  // ---------- ATS helpers ----------
+  function updateATS(){
+    const resumeText = previewEl.innerText || "";
+    const jd = $('jd').value || "";
+    const res = scoreATS(resumeText, jd);
+    atsBadge.textContent = `ATS: ${res.score}/100`;
+    atsBadge.className = res.score >= 85 ? "badge bg-success" : "badge bg-warning text-dark";
+    matchedListEl.textContent = res.matched.join(", ") || "—";
+    missingListEl.textContent = res.missing.join(", ") || "—";
+    // Save last score
+    state.atsScore = res.score;
+    state.atsMatched = res.matched;
+    state.atsMissing = res.missing;
+  }
+
+  // Auto-add keywords from JD to skills
+  function autoAddKeywords(){
+    const jd = $('jd').value || "";
+    if(!jd.trim()) { alert("Paste the job description first."); return; }
+    const jdKs = uniq(toKeywords(jd));
+    const curSkills = uniq((state.skills||"").toLowerCase().split(',').map(s=>s.trim()).filter(Boolean));
+    const missing = jdKs.filter(k=>k.length>3 && !curSkills.includes(k));
+    if(!missing.length){ alert("No missing keywords found or skills already include JD keywords."); return; }
+    // Add top N missing words to skills (choose up to 10)
+    const toAdd = missing.slice(0,10).join(", ");
+    state.skills = (state.skills ? state.skills + ", " : "") + toAdd;
+    $('skills').value = state.skills;
+    generatePreviewFromForm();
+    alert(`Added keywords: ${toAdd}`);
+  }
+
+  // ---------- Auto-generate CV from JD ----------
+  function generateFromJD(){
+    const jd = $('jd').value || "";
+    if(!jd.trim()){ alert("Please paste the job description first."); return; }
+    // Extract top keywords (simple frequency)
+    const words = toKeywords(jd);
+    const freq = {};
+    words.forEach(w=> freq[w] = (freq[w]||0)+1);
+    const sorted = Object.entries(freq).sort((a,b)=>b[1]-a[1]).map(x=>x[0]);
+    // pick skill seeds from top words excluding stop-ish terms
+    const stop = new Set(["experience","years","year","position","role","responsible","ability","work","team","work","strong","skills","good","candidate"]);
+    const skillSeeds = sorted.filter(w => !stop.has(w) && w.length>3).slice(0,8);
+    // Build a suggested role/title from JD heading lines (first line)
+    const jdLines = jd.split('\n').map(l=>l.trim()).filter(Boolean);
+    const guessTitle = jdLines.length ? jdLines[0].slice(0,80) : state.role;
+
+    // Create projects and experiences naive templates
+    state.role = guessTitle || state.role;
+    $('role').value = state.role;
+    state.skills = skillSeeds.join(", ");
+    $('skills').value = state.skills;
+
+    // Create one auto-experience and two auto-projects
+    state.experiences = [{
+      title: state.role,
+      company: "Auto-generated — Target role",
+      start: "2021",
+      end: "Present",
+      highlights: [
+        `${pickAction()} and delivered solutions aligned with the job requirements.`,
+        `Worked with ${skillSeeds.slice(0,4).join(", ")} across feature development and maintenance.`,
+        `Improved reliability and performance through tests and automation.`
+      ]
+    }];
+
+    state.projects = skillSeeds.length ? skillSeeds.slice(0,3).map((s,idx)=>({
+      name: `${s.charAt(0).toUpperCase()+s.slice(1)} Project ${idx+1}`,
+      brief: `Implemented core ${s} functionality per JD requirements.`,
+      tech: s
+    })) : [{ name: "Project 1", brief: "Auto-implemented project based on JD", tech: "" }];
+
+    // Optional: generate summary
+    state.summary = genSummary(state.name||DEFAULT.name, state.role, state.skills);
+
+    // Update inputs & preview
+    $('projects').value = state.projects.map(p => `${p.name} — ${p.brief}${p.tech? " — " + p.tech : ""}`).join("\n");
+    generatePreviewFromForm();
+    alert("Auto-generation from JD complete. Review & edit the preview as needed.");
+  }
+
+  // ---------- Form -> Preview ----------
+  function generatePreviewFromForm(){
+    readFormToState();
+    // ensure experiences, projects parsed properly (if user edited fields earlier)
+    // parse projects textarea into objects if not already
+    const projRaw = ($('projects').value||"").split('\n').map(l=>l.trim()).filter(Boolean);
+    state.projects = projRaw.map(line=>{
+      // try formats
+      const parts = line.split('—').map(s=>s.trim());
+      const name = parts[0] || line;
+      const brief = parts.slice(1).join(' — ') || name;
+      // extract tech from [] or last comma-separated
+      let tech = "";
+      const techMatch = brief.match(/\[(.*)\]$/);
+      if(techMatch) tech = techMatch[1];
+      return { name, brief, tech };
+    });
+
+    // summary: if empty generate
+    if(!state.summary || !state.summary.trim()) state.summary = genSummary(state.name||DEFAULT.name, state.role||DEFAULT.role, state.skills||DEFAULT.skills);
+
+    // ensure experiences have highlights
+    state.experiences = (state.experiences && state.experiences.length) ? state.experiences : DEFAULT.experiences;
+    state.experiences = state.experiences.map(e=>({
+      title: e.title || "Role",
+      company: e.company || "Company",
+      start: e.start || "2022",
+      end: e.end || "Present",
+      highlights: (e.highlights && e.highlights.length) ? e.highlights : expandExperience(e, state.skills)
+    }));
+
+    renderPreview();
+  }
+
+  // ---------- Exports ----------
+  async function exportPDF(){
+    try{
+      const el = previewEl;
+      const canvas = await html2canvas(el, { scale:2, useCORS:true, backgroundColor:"#ffffff" });
+      const img = canvas.toDataURL("image/png");
       const { jsPDF } = window.jspdf;
-      let doc = new jsPDF();
-      let content = document.getElementById("resumePreview");
-      let canvas = await html2canvas(content);
-      let imgData = canvas.toDataURL('image/png');
-      doc.addImage(imgData, 'PNG', 10, 10, 190, 0);
-      doc.save("resume.pdf");
-    }
-    // Export TXT
-    function exportTXT() {
-      let text = document.getElementById("resumePreview").innerText;
-      let blob = new Blob([text], {type:"text/plain"});
-      let a = document.createElement("a");
-      a.href = URL.createObjectURL(blob);
-      a.download = "resume.txt";
-      a.click();
-    }
-    // Export JSON
-    function exportJSON() {
-      let text = document.getElementById("resumePreview").innerText;
-      let blob = new Blob([JSON.stringify({resume:text},null,2)], {type:"application/json"});
-      let a = document.createElement("a");
-      a.href = URL.createObjectURL(blob);
-      a.download = "resume.json";
-      a.click();
-    }
-    // Export DOCX (simple text docx)
-    function exportDOCX() {
-      let text = document.getElementById("resumePreview").innerText;
-      let blob = new Blob([text], {type:"application/vnd.openxmlformats-officedocument.wordprocessingml.document"});
-      let a = document.createElement("a");
-      a.href = URL.createObjectURL(blob);
-      a.download = "resume.docx";
-      a.click();
-    }
+      const pdf = new jsPDF({ unit:'pt', format:'a4' });
+      const pageW = pdf.internal.pageSize.getWidth();
+      const pageH = pdf.internal.pageSize.getHeight();
+      const imgW = canvas.width;
+      const imgH = canvas.height;
+      const ratio = Math.min(pageW/imgW, (pageH-40)/imgH);
+      const x = (pageW - imgW*ratio)/2;
+      pdf.addImage(img, 'PNG', x, 20, imgW*ratio, imgH*ratio);
+      pdf.save("resume.pdf");
+    }catch(err){ console.error("PDF export error:", err); alert("PDF export failed — check console."); }
+  }
+
+  function exportTXT(){
+    try{
+      const txt = previewEl.innerText;
+      const blob = new Blob([txt], { type: "text/plain;charset=utf-8" });
+      const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = "resume.txt"; a.click(); URL.revokeObjectURL(a.href);
+    }catch(err){ console.error("TXT export error:", err); alert("TXT export failed."); }
+  }
+
+  function exportJSON(){
+    try{
+      const blob = new Blob([JSON.stringify({ preview: previewEl.innerText }, null, 2)], { type: "application/json" });
+      const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = "resume.json"; a.click(); URL.revokeObjectURL(a.href);
+    }catch(err){ console.error("JSON export error:", err); alert("JSON export failed."); }
+  }
+
+  // DOC fallback (Word-compatible HTML) — safer than depending on docx libs
+  function exportDOC(){
+    try{
+      const html = `
+        <html><head><meta charset="utf-8"></head><body>
+        ${previewEl.innerHTML}
+        </body></html>`;
+      const blob = new Blob([html], { type: "application/msword" });
+      const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = "resume.doc"; a.click(); URL.revokeObjectURL(a.href);
+    }catch(err){ console.error("DOC export error:", err); alert("DOC export failed."); }
+  }
+
+  // ---------- Bind events ----------
+  document.addEventListener('DOMContentLoaded', ()=>{
+    // Wire buttons
+    $('generateBtn').addEventListener('click', generatePreviewFromForm);
+    $('genFromJD').addEventListener('click', generateFromJD);
+    $('autoAddKeywords').addEventListener('click', autoAddKeywords);
+    $('resetBtn').addEventListener('click', ()=>{ state = JSON.parse(JSON.stringify(DEFAULT)); // reset inputs
+      $('name').value = state.name; $('role').value = state.role; $('email').value = state.email; $('phone').value = state.phone; $('location').value = state.location;
+      $('skills').value = state.skills; $('projects').value = state.projects.map(p=>`${p.name} — ${p.brief}${p.tech? " — "+p.tech:""}`).join("\n");
+      $('jd').value = "";
+      $('summary')?.remove(); // if any
+      generatePreviewFromForm();
+    });
+
+    $('exportPDF').addEventListener('click', exportPDF);
+    $('exportTXT').addEventListener('click', exportTXT);
+    $('exportJSON').addEventListener('click', exportJSON);
+    $('exportDOC').addEventListener('click', exportDOC);
+
+    // Inline editing: update ATS on blur or input
+    previewEl.addEventListener('input', ()=> { updateATS(); });
+
+    // Initialize fields with defaults
+    $('name').value = state.name;
+    $('role').value = state.role;
+    $('email').value = state.email;
+    $('phone').value = state.phone;
+    $('location').value = state.location;
+    $('skills').value = state.skills;
+    $('projects').value = state.projects.map(p=>`${p.name} — ${p.brief}${p.tech? " — "+p.tech:""}`).join("\n");
+    generatePreviewFromForm();
+  });
+
+  // Expose some functions for console debugging
+  window._atsBuilder = { state, generateFromJD, generatePreviewFromForm, exportPDF, exportDOC, exportTXT, exportJSON };
+
   </script>
 </body>
 </html>
