@@ -1,0 +1,12 @@
+:root{--card-radius:12px}
+body{background:linear-gradient(180deg,#ffffff,#f3f6fb);font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial}
+.card-rounded{border-radius:var(--card-radius)}
+.subhead{font-size:.85rem;font-weight:600;color:#374151;letter-spacing:.02em;text-transform:uppercase}
+#preview{max-width:900px;margin:0 auto;color:#111;background:#fff;padding:20px;border-radius:10px}
+#preview .heading{font-size:20px;font-weight:700}
+#preview .meta{font-size:13px;color:#374151;margin-top:4px}
+#preview .section-title{font-weight:700;margin-top:14px;margin-bottom:6px}
+#preview ul{margin-left:1rem}
+.tiny{font-size:12px;color:#6b7280}
+.keyword-chip{display:inline-block;background:#eef2ff;color:#3730a3;padding:4px 8px;border-radius:999px;margin:2px;font-size:12px}
+@media print{.no-print{display:none!important}}
