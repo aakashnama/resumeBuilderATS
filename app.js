@@ -20,7 +20,6 @@ aws: ["AWS (S3, EC2)", "IAM", "CI/CD basics"],
 docker: ["Docker, containerization"]
 };
 
-// Bug 2 Fix: Removed all pre-filled default values
 const DEFAULT = {
 name: "",
 role: "",
@@ -31,7 +30,8 @@ skills: "",
 projects: [],
 experiences: [],
 education: [],
-summary: ""
+summary: "",
+sectionOrder: ["summary", "skills", "experience", "projects", "education"]
 };
 
 let state = JSON.parse(JSON.stringify(DEFAULT));
@@ -39,9 +39,11 @@ let state = JSON.parse(JSON.stringify(DEFAULT));
 // DOM aliases
 const $ = id => document.getElementById(id);
 const previewEl = $('preview');
-const atsBadge = $('atsBadge');
-const matchedListEl = $('matchedList');
-const missingListEl = $('missingList');
+const matchedChipsEl = $('matchedChips');
+const missingChipsEl = $('missingChips');
+const atsArc = $('atsArc');
+const atsScoreText = $('atsScoreText');
+const atsLabel = $('atsLabel');
 
 // ---------- Text utilities ----------
 function toKeywords(text){
@@ -103,7 +105,7 @@ const score = total ? Math.round((got/total)*100) : 100;
 return { score: Math.min(score,99), matched: uniq(matched).slice(0,50), missing: uniq(missing).slice(0,50) };
 }
 
-// ---------- Bug 1 Fix: Check if resume is empty ----------
+// ---------- Check if resume is empty ----------
 function isResumeEmpty(){
   return !previewEl.innerText.trim();
 }
@@ -115,6 +117,7 @@ const hasContent = data.name || data.role || data.email || data.phone || data.lo
 if(!hasContent) return "";
 
 const lines = [];
+const order = data.sectionOrder || state.sectionOrder;
 
 // header — only show non-empty parts
 if(data.name) lines.push(`<div class="heading">${escapeHtml(data.name)}</div>`);
@@ -122,48 +125,56 @@ if(data.role) lines.push(`<div class="meta">${escapeHtml(data.role)}</div>`);
 const contactParts = [data.location, data.phone, data.email].filter(Boolean);
 if(contactParts.length) lines.push(`<div class="meta">${contactParts.map(s=>escapeHtml(s)).join(" | ")}</div>`);
 
-// summary — only if there's content
-const summaryText = data.summary || genSummary(data.name, data.role, data.skills);
-if(summaryText) {
-  lines.push(`<div class="section-title">Summary</div>`);
-  lines.push(`<div>${escapeHtml(summaryText)}</div>`);
-}
+// Iterates sections based on user-defined order
+order.forEach(section => {
+  if(section === 'summary') {
+    const summaryText = data.summary || genSummary(data.name, data.role, data.skills);
+    if(summaryText) {
+      lines.push(`<div class="section-title">Summary</div>`);
+      lines.push(`<div>${escapeHtml(summaryText)}</div>`);
+    }
+  }
 
-// skills (expanded) — only if there are skills
-const skillList = uniq((data.skills||"").split(",").map(s=>s.trim()).filter(Boolean));
-if(skillList.length) {
-  const expanded = skillList.flatMap(s=>expandSkillText(s));
-  lines.push(`<div class="section-title">Skills</div>`);
-  lines.push(`<div>${expanded.map(s=>escapeHtml(s)).join(" • ")}</div>`);
-}
+  else if(section === 'skills') {
+    const skillList = uniq((data.skills||"").split(",").map(s=>s.trim()).filter(Boolean));
+    if(skillList.length) {
+      const expanded = skillList.flatMap(s=>expandSkillText(s));
+      lines.push(`<div class="section-title">Skills</div>`);
+      lines.push(`<div>${expanded.map(s=>escapeHtml(s)).join(" • ")}</div>`);
+    }
+  }
 
-// experience — only if there are entries
-if((data.experiences||[]).length){
-  lines.push(`<div class="section-title">Experience</div>`);
-  (data.experiences||[]).forEach((exp)=>{
-    const h = exp.highlights && exp.highlights.filter(x=>x.trim()).length ? exp.highlights : expandExperience(exp, data.skills);
-    lines.push(`<div><strong>${escapeHtml(exp.title)} — ${escapeHtml(exp.company)}</strong> <span class="tiny text-muted">${escapeHtml(exp.start)} – ${escapeHtml(exp.end)}</span></div>`);
-    lines.push(`<ul>${h.map(x=>`<li>${escapeHtml(x)}</li>`).join("")}</ul>`);
-  });
-}
+  else if(section === 'experience') {
+    if((data.experiences||[]).length){
+      lines.push(`<div class="section-title">Experience</div>`);
+      (data.experiences||[]).forEach((exp)=>{
+        const h = exp.highlights && exp.highlights.filter(x=>x.trim()).length ? exp.highlights : expandExperience(exp, data.skills);
+        lines.push(`<div><strong>${escapeHtml(exp.title)} — ${escapeHtml(exp.company)}</strong> <span class="tiny text-muted">${escapeHtml(exp.start)} – ${escapeHtml(exp.end)}</span></div>`);
+        lines.push(`<ul>${h.map(x=>`<li>${escapeHtml(x)}</li>`).join("")}</ul>`);
+      });
+    }
+  }
 
-// projects — only if there are entries
-if((data.projects||[]).length){
-  lines.push(`<div class="section-title">Projects</div>`);
-  data.projects.forEach(p=>{
-    const bullets = expandProject(p);
-    lines.push(`<div><strong>${escapeHtml(p.name)}</strong> ${p.tech?`<span class="tiny text-muted">— [${escapeHtml(p.tech)}]</span>`: ""}</div>`);
-    lines.push(`<ul>${bullets.map(b=>`<li>${escapeHtml(b)}</li>`).join("")}</ul>`);
-  });
-}
+  else if(section === 'projects') {
+    if((data.projects||[]).length){
+      lines.push(`<div class="section-title">Projects</div>`);
+      data.projects.forEach(p=>{
+        const bullets = expandProject(p);
+        lines.push(`<div><strong>${escapeHtml(p.name)}</strong> ${p.tech?`<span class="tiny text-muted">— [${escapeHtml(p.tech)}]</span>`: ""}</div>`);
+        lines.push(`<ul>${bullets.map(b=>`<li>${escapeHtml(b)}</li>`).join("")}</ul>`);
+      });
+    }
+  }
 
-// education — only if there are entries
-if((data.education||[]).length){
-  lines.push(`<div class="section-title">Education</div>`);
-  (data.education||[]).forEach(ed => {
-    lines.push(`<div>${escapeHtml(ed.degree)} , ${escapeHtml(ed.school)} — ${escapeHtml(ed.year)}</div>`);
-  });
-}
+  else if(section === 'education') {
+    if((data.education||[]).length){
+      lines.push(`<div class="section-title">Education</div>`);
+      (data.education||[]).forEach(ed => {
+        lines.push(`<div>${escapeHtml(ed.degree)} , ${escapeHtml(ed.school)} — ${escapeHtml(ed.year)}</div>`);
+      });
+    }
+  }
+});
 
 return lines.join("");
 }
@@ -182,6 +193,8 @@ state.email = $('email').value || DEFAULT.email;
 state.phone = $('phone').value || DEFAULT.phone;
 state.location = $('location').value || DEFAULT.location;
 state.skills = $('skills').value || DEFAULT.skills;
+state.summary = $('summary').value || DEFAULT.summary;
+
 // projects: parse lines into objects {name, brief, tech}
 const projRaw = ($('projects').value||"").split('\n').map(l=>l.trim()).filter(Boolean);
 state.projects = projRaw.map(line=>{
@@ -197,7 +210,6 @@ state.projects = projRaw.map(line=>{
 
 state.experiences = state.experiences && state.experiences.length ? state.experiences : DEFAULT.experiences;
 state.education = state.education && state.education.length ? state.education : DEFAULT.education;
-state.summary = state.summary || "";
 }
 
 function renderPreview(){
@@ -205,27 +217,121 @@ const html = buildResumeHtml(state);
 previewEl.innerHTML = html;
 previewEl.contentEditable = html ? "true" : "false";
 updateATS();
+updateCounters();
 }
 
 // ---------- ATS helpers ----------
 function updateATS(){
 const resumeText = previewEl.innerText || "";
 const jd = $('jd').value || "";
+
 if(!resumeText.trim()){
-  atsBadge.textContent = "ATS: —";
-  atsBadge.className = "badge bg-warning text-dark";
-  matchedListEl.textContent = "—";
-  missingListEl.textContent = "—";
+  // Reset gauge
+  atsArc.style.strokeDashoffset = 103.67;
+  atsArc.style.stroke = "#d1d5db";
+  atsScoreText.textContent = "—";
+  atsScoreText.style.fill = "#9ca3af";
+  atsLabel.textContent = "ATS: —";
+  atsLabel.style.color = "#6b7280";
+
+  matchedChipsEl.innerHTML = '<span class="tiny text-muted">—</span>';
+  missingChipsEl.innerHTML = '<span class="tiny text-muted">—</span>';
   return;
 }
+
 const res = scoreATS(resumeText, jd);
-atsBadge.textContent = `ATS: ${res.score}/100`;
-atsBadge.className = res.score >= 85 ? "badge bg-success" : "badge bg-warning text-dark";
-matchedListEl.textContent = res.matched.join(", ") || "—";
-missingListEl.textContent = res.missing.join(", ") || "—";
+
+// Update SVG Gauge
+const circumference = 2 * Math.PI * 22; // r=22 -> ~138.23
+const arcLength = (270 / 360) * circumference; // 103.67
+const offset = arcLength - (res.score / 100) * arcLength;
+
+atsArc.style.strokeDashoffset = offset;
+atsScoreText.textContent = res.score;
+
+if(res.score >= 85) {
+  atsArc.style.stroke = "#22c55e"; // Green
+  atsScoreText.style.fill = "#22c55e";
+  atsLabel.textContent = "ATS: Excellent";
+  atsLabel.style.color = "#22c55e";
+} else if(res.score >= 65) {
+  atsArc.style.stroke = "#eab308"; // Yellow
+  atsScoreText.style.fill = "#eab308";
+  atsLabel.textContent = "ATS: Good";
+  atsLabel.style.color = "#eab308";
+} else {
+  atsArc.style.stroke = "#ef4444"; // Red
+  atsScoreText.style.fill = "#ef4444";
+  atsLabel.textContent = "ATS: Low";
+  atsLabel.style.color = "#ef4444";
+}
+
+// Update Matched Chips
+matchedChipsEl.innerHTML = '';
+if(res.matched.length === 0) {
+  matchedChipsEl.innerHTML = '<span class="tiny text-muted">—</span>';
+} else {
+  res.matched.forEach(k => {
+    const chip = document.createElement('span');
+    chip.className = 'chip chip-matched';
+    chip.textContent = k;
+    matchedChipsEl.appendChild(chip);
+  });
+}
+
+// Update Missing Chips
+missingChipsEl.innerHTML = '';
+if(res.missing.length === 0) {
+  missingChipsEl.innerHTML = '<span class="tiny text-muted">None! Great job.</span>';
+} else {
+  res.missing.forEach(k => {
+    const chip = document.createElement('span');
+    chip.className = 'chip chip-missing';
+
+    const text = document.createTextNode(k);
+    chip.appendChild(text);
+
+    const addBtn = document.createElement('button');
+    addBtn.className = 'chip-add';
+    addBtn.textContent = '+';
+    addBtn.title = 'Add to skills';
+    addBtn.addEventListener('click', () => addKeywordToSkills(k));
+    chip.appendChild(addBtn);
+
+    missingChipsEl.appendChild(chip);
+  });
+}
+
 state.atsScore = res.score;
 state.atsMatched = res.matched;
 state.atsMissing = res.missing;
+}
+
+// Feature 1: Add single missing keyword to skills
+function addKeywordToSkills(keyword) {
+  const curSkills = $('skills').value.trim();
+  $('skills').value = curSkills ? `${curSkills}, ${keyword}` : keyword;
+  state.skills = $('skills').value;
+  generatePreviewFromForm();
+}
+
+// Feature 4: Character counters
+function updateCounters() {
+  // Summary
+  const sumText = $('summary').value.trim();
+  const sumWords = sumText ? sumText.split(/\s+/).length : 0;
+  const sumChars = $('summary').value.length;
+  const sumCounter = $('summaryCounter');
+  sumCounter.textContent = `${sumWords} words · ${sumChars} chars`;
+  // Warn if > 3 lines (approx > 200 chars)
+  if(sumChars > 200) sumCounter.classList.add('warning');
+  else sumCounter.classList.remove('warning');
+
+  // Skills
+  const skText = $('skills').value.trim();
+  const skKw = skText ? skText.split(',').map(s=>s.trim()).filter(Boolean).length : 0;
+  const skChars = $('skills').value.length;
+  $('skillsCounter').textContent = `${skKw} keywords · ${skChars} chars`;
 }
 
 // Auto-add keywords from JD to skills
@@ -280,6 +386,7 @@ state.projects = skillSeeds.length ? skillSeeds.slice(0,3).map((s,idx)=>({
 })) : [{ name: "Project 1", brief: "Auto-implemented project based on JD", tech: "" }];
 
 state.summary = genSummary(state.name||DEFAULT.name, state.role, state.skills);
+ $('summary').value = state.summary;
 
  $('projects').value = state.projects.map(p => `${p.name} — ${p.brief}${p.tech? " — " + p.tech : ""}`).join("\n");
 generatePreviewFromForm();
@@ -316,7 +423,6 @@ renderPreview();
 
 // ---------- Exports ----------
 async function exportPDF(){
-// Bug 1 Fix: Check if resume is empty before exporting
 if(isResumeEmpty()){ alert("Please fill the form first."); return; }
 try{
   const el = previewEl;
@@ -336,7 +442,6 @@ try{
 }
 
 function exportTXT(){
-// Bug 1 Fix: Check if resume is empty before exporting
 if(isResumeEmpty()){ alert("Please fill the form first."); return; }
 try{
   const txt = previewEl.innerText;
@@ -346,7 +451,6 @@ try{
 }
 
 function exportJSON(){
-// Bug 1 Fix: Check if resume is empty before exporting
 if(isResumeEmpty()){ alert("Please fill the form first."); return; }
 try{
   const blob = new Blob([JSON.stringify({ preview: previewEl.innerText }, null, 2)], { type: "application/json" });
@@ -355,7 +459,6 @@ try{
 }
 
 function exportDOC(){
-// Bug 1 Fix: Check if resume is empty before exporting
 if(isResumeEmpty()){ alert("Please fill the form first."); return; }
 try{
   const html = `
@@ -367,13 +470,64 @@ try{
 }catch(err){ console.error("DOC export error:", err); alert("DOC export failed."); }
 }
 
+// ---------- Feature 3: Section Reorder & Collapse Logic ----------
+function moveSection(sectionId, direction) {
+  const idx = state.sectionOrder.indexOf(sectionId);
+  const newIdx = idx + direction;
+  if (newIdx < 0 || newIdx >= state.sectionOrder.length) return;
+
+  // Swap in state array
+  [state.sectionOrder[idx], state.sectionOrder[newIdx]] = [state.sectionOrder[newIdx], state.sectionOrder[idx]];
+
+  // Swap in DOM
+  const container = $('sectionOrderContainer');
+  const el = container.querySelector(`[data-section="${sectionId}"]`);
+  if (direction === -1) container.insertBefore(el, el.previousElementSibling);
+  else container.insertBefore(el, el.nextElementSibling, el.nextSibling);
+
+  // If preview has content, silently re-render it with new layout
+  if(previewEl.innerText.trim()) {
+    readFormToState();
+    renderPreview();
+  }
+}
+
+function toggleSection(sectionId) {
+  const sectionEl = document.querySelector(`.reorder-section[data-section="${sectionId}"]`);
+  const btnEl = document.querySelector(`.btn-toggle[data-section="${sectionId}"]`);
+
+  if(sectionEl.classList.contains('collapsed')) {
+    sectionEl.classList.remove('collapsed');
+    btnEl.classList.remove('collapsed');
+  } else {
+    sectionEl.classList.add('collapsed');
+    btnEl.classList.add('collapsed');
+  }
+}
+
 // ---------- Bind events ----------
 document.addEventListener('DOMContentLoaded', ()=>{
  $('generateBtn').addEventListener('click', generatePreviewFromForm);
  $('genFromJD').addEventListener('click', generateFromJD);
  $('autoAddKeywords').addEventListener('click', autoAddKeywords);
 
-// Bug 4 Fix: Reset clears form, preview, and ATS display completely
+ // Section toggle buttons
+ document.querySelectorAll('.btn-toggle').forEach(btn => {
+   btn.addEventListener('click', () => toggleSection(btn.dataset.section));
+ });
+
+ // Section reorder buttons
+ document.querySelectorAll('.btn-reorder.reorder-up').forEach(btn => {
+   btn.addEventListener('click', () => moveSection(btn.dataset.section, -1));
+ });
+ document.querySelectorAll('.btn-reorder.reorder-down').forEach(btn => {
+   btn.addEventListener('click', () => moveSection(btn.dataset.section, 1));
+ });
+
+ // Counters on type
+ $('summary').addEventListener('input', updateCounters);
+ $('skills').addEventListener('input', updateCounters);
+
  $('resetBtn').addEventListener('click', ()=>{
   state = JSON.parse(JSON.stringify(DEFAULT));
   $('name').value = "";
@@ -382,14 +536,33 @@ document.addEventListener('DOMContentLoaded', ()=>{
   $('phone').value = "";
   $('location').value = "";
   $('skills').value = "";
+  $('summary').value = "";
   $('projects').value = "";
   $('jd').value = "";
   previewEl.innerHTML = "";
   previewEl.contentEditable = "false";
-  atsBadge.textContent = "ATS: —";
-  atsBadge.className = "badge bg-warning text-dark";
-  matchedListEl.textContent = "—";
-  missingListEl.textContent = "—";
+
+  // Reset ATS
+  atsArc.style.strokeDashoffset = 103.67;
+  atsArc.style.stroke = "#d1d5db";
+  atsScoreText.textContent = "—";
+  atsScoreText.style.fill = "#9ca3af";
+  atsLabel.textContent = "ATS: —";
+  atsLabel.style.color = "#6b7280";
+  matchedChipsEl.innerHTML = '<span class="tiny text-muted">—</span>';
+  missingChipsEl.innerHTML = '<span class="tiny text-muted">—</span>';
+
+  // Reset Counters
+  updateCounters();
+
+  // Reset DOM order
+  const container = $('sectionOrderContainer');
+  state.sectionOrder.forEach(sec => {
+    const el = container.querySelector(`[data-section="${sec}"]`);
+    container.appendChild(el);
+    el.classList.remove('collapsed');
+    el.querySelector('.btn-toggle').classList.remove('collapsed');
+  });
 });
 
  $('exportPDF').addEventListener('click', exportPDF);
@@ -400,12 +573,9 @@ document.addEventListener('DOMContentLoaded', ()=>{
 // Inline editing: update ATS on blur or input
 previewEl.addEventListener('input', ()=> { updateATS(); });
 
-// Bug 2 Fix: Do NOT pre-fill form fields or auto-generate on load
-// Keep placeholders visible, preview empty
+// Initial setup
 previewEl.innerHTML = "";
-atsBadge.textContent = "ATS: —";
-matchedListEl.textContent = "—";
-missingListEl.textContent = "—";
+updateCounters();
 });
 
 // Expose some functions for console debugging

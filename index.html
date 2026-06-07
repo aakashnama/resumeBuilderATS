@@ -7,7 +7,6 @@
   <!-- Bootstrap CSS -->
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
-
 </head>
 <body>
   <nav class="navbar bg-white border-bottom mb-3 no-print">
@@ -57,25 +56,121 @@
               <input id="location" class="form-control" placeholder="City, State, Country" />
             </div>
 
-            <div class="col-12">
-              <label class="form-label tiny">Minimal skills (comma separated)</label>
-              <textarea id="skills" rows="2" class="form-control" placeholder="React, Node.js, SQL"></textarea>
-              <div class="tiny mt-1">You can paste keywords from the JD; builder will normalize and expand.</div>
-            </div>
+            <!-- Reorderable Resume Sections -->
+            <div class="col-12 mt-1">
+              <div class="subhead mb-2">Resume Sections <span class="tiny text-muted fw-normal">(▾ collapse · ▲▼ reorder)</span></div>
+              <div id="sectionOrderContainer">
 
-            <div class="col-12">
-              <label class="form-label tiny">One-line projects (one per line)</label>
-              <textarea id="projects" rows="3" class="form-control" placeholder="E-commerce dashboard — React, Node.js"></textarea>
-              <div class="tiny mt-1">Short project hints will be auto-expanded into bullets.</div>
+                <div class="reorder-section" data-section="summary">
+                  <div class="d-flex justify-content-between align-items-center">
+                    <div class="d-flex align-items-center gap-1">
+                      <button class="btn-toggle" data-section="summary" title="Toggle section">▾</button>
+                      <label class="form-label tiny mb-0">Summary</label>
+                    </div>
+                    <div class="d-flex gap-1">
+                      <button class="btn-reorder reorder-up" data-section="summary" title="Move up">▲</button>
+                      <button class="btn-reorder reorder-down" data-section="summary" title="Move down">▼</button>
+                    </div>
+                  </div>
+                  <div class="section-body">
+                    <textarea id="summary" rows="2" class="form-control mt-1" placeholder="Professional summary — leave blank to auto-generate"></textarea>
+                    <div class="char-counter tiny mt-1" id="summaryCounter">0 words · 0 chars</div>
+                  </div>
+                </div>
+
+                <div class="reorder-section" data-section="skills">
+                  <div class="d-flex justify-content-between align-items-center">
+                    <div class="d-flex align-items-center gap-1">
+                      <button class="btn-toggle" data-section="skills" title="Toggle section">▾</button>
+                      <label class="form-label tiny mb-0">Skills (comma separated)</label>
+                    </div>
+                    <div class="d-flex gap-1">
+                      <button class="btn-reorder reorder-up" data-section="skills" title="Move up">▲</button>
+                      <button class="btn-reorder reorder-down" data-section="skills" title="Move down">▼</button>
+                    </div>
+                  </div>
+                  <div class="section-body">
+                    <textarea id="skills" rows="2" class="form-control mt-1" placeholder="React, Node.js, SQL"></textarea>
+                    <div class="char-counter tiny mt-1" id="skillsCounter">0 keywords · 0 chars</div>
+                    <div class="tiny mt-1 text-muted">Paste keywords from JD; builder normalizes and expands.</div>
+                  </div>
+                </div>
+
+                <div class="reorder-section" data-section="experience">
+                  <div class="d-flex justify-content-between align-items-center">
+                    <div class="d-flex align-items-center gap-1">
+                      <button class="btn-toggle" data-section="experience" title="Toggle section">▾</button>
+                      <label class="form-label tiny mb-0">Experience</label>
+                    </div>
+                    <div class="d-flex gap-1">
+                      <button class="btn-reorder reorder-up" data-section="experience" title="Move up">▲</button>
+                      <button class="btn-reorder reorder-down" data-section="experience" title="Move down">▼</button>
+                    </div>
+                  </div>
+                  <div class="section-body">
+                    <div class="tiny text-muted mt-1">Auto-generated from JD, or edit in preview.</div>
+                  </div>
+                </div>
+
+                <div class="reorder-section" data-section="projects">
+                  <div class="d-flex justify-content-between align-items-center">
+                    <div class="d-flex align-items-center gap-1">
+                      <button class="btn-toggle" data-section="projects" title="Toggle section">▾</button>
+                      <label class="form-label tiny mb-0">Projects (one per line)</label>
+                    </div>
+                    <div class="d-flex gap-1">
+                      <button class="btn-reorder reorder-up" data-section="projects" title="Move up">▲</button>
+                      <button class="btn-reorder reorder-down" data-section="projects" title="Move down">▼</button>
+                    </div>
+                  </div>
+                  <div class="section-body">
+                    <textarea id="projects" rows="3" class="form-control mt-1" placeholder="E-commerce dashboard — React, Node.js"></textarea>
+                    <div class="tiny mt-1 text-muted">Short project hints auto-expand into bullets.</div>
+                  </div>
+                </div>
+
+                <div class="reorder-section" data-section="education">
+                  <div class="d-flex justify-content-between align-items-center">
+                    <div class="d-flex align-items-center gap-1">
+                      <button class="btn-toggle" data-section="education" title="Toggle section">▾</button>
+                      <label class="form-label tiny mb-0">Education</label>
+                    </div>
+                    <div class="d-flex gap-1">
+                      <button class="btn-reorder reorder-up" data-section="education" title="Move up">▲</button>
+                      <button class="btn-reorder reorder-down" data-section="education" title="Move down">▼</button>
+                    </div>
+                  </div>
+                  <div class="section-body">
+                    <div class="tiny text-muted mt-1">Auto-generated, or edit in preview.</div>
+                  </div>
+                </div>
+
+              </div>
             </div>
 
             <div class="col-12">
               <label class="form-label tiny">Job Description (paste full JD)</label>
               <textarea id="jd" rows="6" class="form-control" placeholder="Paste the job posting here..."></textarea>
-              <div class="d-flex gap-2 mt-2">
-                <span id="atsBadge" class="badge bg-warning text-dark">ATS: —</span>
-                <button id="autoAddKeywords" class="btn btn-sm btn-outline-secondary">Auto-add missing keywords</button>
-                <div class="tiny text-muted ms-auto">Target ATS ≥ 85</div>
+              <div class="d-flex gap-2 mt-2 align-items-center">
+                <!-- ATS Gauge SVG -->
+                <svg id="atsGauge" width="52" height="52" viewBox="0 0 52 52" class="flex-shrink-0">
+                  <circle cx="26" cy="26" r="22" fill="none" stroke="#e5e7eb" stroke-width="5"
+                          stroke-dasharray="103.67 138.23"
+                          transform="rotate(135 26 26)"
+                          stroke-linecap="round"/>
+                  <circle id="atsArc" cx="26" cy="26" r="22" fill="none" stroke="#d1d5db" stroke-width="5"
+                          stroke-dasharray="103.67 138.23"
+                          stroke-dashoffset="103.67"
+                          transform="rotate(135 26 26)"
+                          stroke-linecap="round"/>
+                  <text id="atsScoreText" x="26" y="28" text-anchor="middle" dominant-baseline="central"
+                        font-size="13" font-weight="700" fill="#9ca3af">—</text>
+                </svg>
+                <div>
+                  <div id="atsLabel" class="tiny fw-semibold" style="color:#6b7280">ATS: —</div>
+                </div>
+                <button id="autoAddKeywords" class="btn btn-sm btn-outline-secondary">Auto-add missing</button>
+                <div class="tiny text-muted ms-auto">Target ≥ 85</div>
               </div>
             </div>
 
@@ -86,7 +181,7 @@
 
             <div class="col-12 mt-2">
               <div class="alert alert-light tiny mb-0">
-                <strong>Tips:</strong> Keep structure simple (Summary, Skills, Experience, Projects, Education). Avoid images/tables for ATS. Use keywords from JD.
+                <strong>Tips:</strong> Keep structure simple. Avoid images/tables for ATS. Use keywords from JD.
               </div>
             </div>
           </div>
@@ -108,8 +203,11 @@
           <div class="mt-3">
             <div class="subhead">Matched / Missing Keywords</div>
             <div class="mt-2 tiny">
-              <div><strong>Matched:</strong> <span id="matchedList">—</span></div>
-              <div><strong>Missing:</strong> <span id="missingList">—</span></div>
+              <div class="mb-1"><strong>Matched:</strong></div>
+              <div id="matchedChips" class="chips-container"></div>
+
+              <div class="mt-2 mb-1"><strong>Missing:</strong> <span class="tiny text-muted fw-normal">(click + to add)</span></div>
+              <div id="missingChips" class="chips-container"></div>
             </div>
           </div>
         </div>
